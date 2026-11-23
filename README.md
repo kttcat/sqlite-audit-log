@@ -1,5 +1,7 @@
 # sqlite-audit-log
 
+Read this in [繁體中文](README.zh-TW.md).
+
 Append-only SQLite audit log with a controlled vocabulary and batch issue tracking.
 
 Three small scripts sharing one module:
