@@ -47,11 +47,15 @@ def main():
             warnings.append(f"{tag}：缺 batch_id，無法追蹤狀態變化")
         if r["action"] in SEV_ACTIONS and r["id"] in latest_ids:
             # 該 batch 任一列有 severity 即算有（統計取最新非 NULL 值）
-            has = con.execute(
-                "SELECT 1 FROM audit_log WHERE action=? AND COALESCE(batch_id,'')=? "
-                "AND severity IS NOT NULL LIMIT 1",
-                (r["action"], r["batch_id"] or ""),
-            ).fetchone()
+            if r["batch_id"]:
+                has = con.execute(
+                    "SELECT 1 FROM audit_log WHERE action=? AND batch_id=? "
+                    "AND severity IS NOT NULL LIMIT 1",
+                    (r["action"], r["batch_id"]),
+                ).fetchone()
+            else:
+                # 無 batch_id：只看自己這一列，不撈別列
+                has = r["severity"]
             if not has:
                 warnings.append(f"{tag}：缺 severity，統計時無法排序")
     for w in warnings:

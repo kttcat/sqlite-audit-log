@@ -87,13 +87,23 @@ def latest_rows(con):
     return out
 
 
-def _latest_severity(con, action, batch_id):
-    """該 batch 最新一筆非 NULL severity（建立時填，之後可重估）。"""
-    r = con.execute(
-        "SELECT severity FROM audit_log WHERE action=? AND COALESCE(batch_id,'')=? "
-        "AND severity IS NOT NULL ORDER BY id DESC LIMIT 1",
-        (action, batch_id or ""),
-    ).fetchone()
+def _latest_severity(con, action, batch_id, row_id=None):
+    """該 batch 最新一筆非 NULL severity（建立時填，之後可重估）。
+
+    batch_id 為 NULL 的列只看自己這一列（按 id），不撈同 action 其他
+    無 batch_id 列的 severity。
+    """
+    if batch_id:
+        r = con.execute(
+            "SELECT severity FROM audit_log WHERE action=? AND batch_id=? "
+            "AND severity IS NOT NULL ORDER BY id DESC LIMIT 1",
+            (action, batch_id),
+        ).fetchone()
+    else:
+        r = con.execute(
+            "SELECT severity FROM audit_log WHERE id=? AND severity IS NOT NULL",
+            (row_id,),
+        ).fetchone()
     return r["severity"] if r else None
 
 
@@ -130,7 +140,7 @@ def open_issues(con):
             "action": action,
             "batch_id": bid or f"(無 batch_id, id={r['id']})",
             "status": r["status"],
-            "severity": _latest_severity(con, action, bid),
+            "severity": _latest_severity(con, action, bid, r["id"]),
             "days_open": days,
             "overdue": days > OVERDUE_DAYS,
             "detail": detail.replace("\n", " "),
